@@ -13549,8 +13549,11 @@ export class OrcaRuntimeService {
     try {
       const cwd = await this.ptyController?.getCwd?.(ptyId)
       return cwd && cwd.trim().length > 0 ? cwd : null
-    } catch {
-      return null
+    } catch (error) {
+      if (error instanceof Error && error.message === 'terminal_handle_stale') {
+        return null
+      }
+      throw error
     }
   }
 
@@ -17461,6 +17464,23 @@ export class OrcaRuntimeService {
   // dispatch still works for handles without a resolvable pane.
   getTerminalPaneKey(handle: string): string | null {
     return this.getPaneKeyForTerminalHandle(handle)
+  }
+
+  getLiveTerminalPaneKey(handle: string): string | null {
+    const runtimePty = this.getLivePtyForHandle(handle)
+    if (runtimePty) {
+      return runtimePty.pty.connected ? (runtimePty.pty.paneKey ?? null) : null
+    }
+    try {
+      const leaf = this.resolveLiveLeafForHandle(handle)
+      if (!leaf?.ptyId) {
+        return null
+      }
+      const pty = this.ptysById.get(leaf.ptyId)
+      return pty?.connected === false ? null : this.getPaneKeyForTerminalHandle(handle)
+    } catch {
+      return null
+    }
   }
 
   getTerminalWorktreeIdForPaneKey(paneKey: string): string | null {
