@@ -93,11 +93,15 @@ export class ClaudeAccountSelection {
       managedAuthRuntime: account.managedAuthRuntime ?? 'host',
       wslDistro: account.wslDistro ?? null,
       authMethod: account.authMethod ?? 'unknown',
+      ...(account.apiKeyConfig ? { apiKeyConfig: account.apiKeyConfig } : {}),
       organizationUuid: account.organizationUuid ?? null,
       organizationName: account.organizationName ?? null,
       createdAt: account.createdAt,
       updatedAt: account.updatedAt,
       lastAuthenticatedAt: account.lastAuthenticatedAt
+    }
+    if (account.authMethod === 'api-key') {
+      return summary
     }
     if (account.managedAuthRuntime === 'wsl') {
       // Why no read: listing must not start a stopped distro. Only an older Orca's folder layout

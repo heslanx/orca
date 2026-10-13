@@ -39,6 +39,7 @@ import {
   type ClaudeFolderLogin
 } from './claude-account-folder'
 import { resolveLoginShellEnvironment } from '../startup/login-shell-environment'
+import { validateClaudeApiKeySelection, claudeApiKeySetupFailed } from './claude-api-key-profile'
 
 const REFRESH_WAIT_MS = 5_000
 
@@ -122,10 +123,10 @@ export class ClaudeProfileRouter {
    * same email, so an account saved before per-account folders logs nobody out.
    */
   coveredBySystemDefault(accountId: string): boolean {
-    if (this.accountLogin(accountId)) {
+    const saved = findClaudeAccount(this.args.getSettings(), accountId)
+    if (saved?.authMethod === 'api-key' || this.accountLogin(accountId)) {
       return false
     }
-    const saved = findClaudeAccount(this.args.getSettings(), accountId)
     const systemDefault = this.systemDefaultLogin()
     return Boolean(saved && systemDefault && isSameClaudeLogin(saved, systemDefault))
   }
@@ -181,6 +182,7 @@ export class ClaudeProfileRouter {
   /** Refreshes the routed folder first; only a first setup that fails stops the launch. */
   async prepareLaunch(): Promise<ClaudeRuntimeAuthPreparation> {
     const selected = this.selectedProfile()
+    const isApiKey = validateClaudeApiKeySelection(selected, this.args.getSettings())
     // Why wait only without the account's own login: System default, and whether it covers the
     // account, depend on the login shell's CLAUDE_CONFIG_DIR; setup awaits it itself.
     if (!selected || !this.accountLogin(selected.accountId)) {
@@ -193,9 +195,9 @@ export class ClaudeProfileRouter {
       return this.preparation()
     }
     // Why the marker: setup writes it last, so a missing folder is set up too.
-    if (!existsSync(claudeProfileMarkerPath(profile))) {
+    if (isApiKey || !existsSync(claudeProfileMarkerPath(profile))) {
       const report = await this.setUp(profile).catch(() => null)
-      if (report?.outcome !== 'prepared') {
+      if (claudeApiKeySetupFailed(report, isApiKey)) {
         throw claudeProfileSetupFailed()
       }
       return this.preparation()
@@ -324,7 +326,10 @@ export class ClaudeProfileRouter {
       wslDistro: null,
       wslLinuxConfigDir: null,
       envPatch: this.launchEnv(),
-      provenance: home ? `profile:${profile?.accountId}` : 'system'
+      provenance: home ? `profile:${profile?.accountId}` : 'system',
+      authMethod: profile
+        ? findClaudeAccount(this.args.getSettings(), profile.accountId)?.authMethod
+        : undefined
     }
   }
 
@@ -363,7 +368,8 @@ export class ClaudeProfileRouter {
     return {
       configDir: home,
       envPatch: { CLAUDE_CONFIG_DIR: home },
-      provenance: `profile:${accountId}`
+      provenance: `profile:${accountId}`,
+      authMethod: findClaudeAccount(this.args.getSettings(), accountId)?.authMethod
     }
   }
 

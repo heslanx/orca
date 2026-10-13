@@ -42,6 +42,16 @@ export class ClaudeAccountService {
     return this.selection.list()
   }
 
+  addApiKeyAccount(input: unknown): Promise<ClaudeRateLimitAccountsState> {
+    this.supersedePendingLogin()
+    return this.serializeMutation(() => this.registration.addApiKey(input))
+  }
+
+  updateApiKeyAccount(input: unknown): Promise<ClaudeRateLimitAccountsState> {
+    this.supersedePendingLogin()
+    return this.serializeMutation(() => this.registration.updateApiKey(input))
+  }
+
   /** A hidden `claude auth login` opens the browser and writes into the new account's folder. */
   addAccount(
     target: ClaudeAccountSelectionTarget = {},

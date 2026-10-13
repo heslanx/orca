@@ -31,7 +31,9 @@ import { OrcadTerminalCensusParamsSchema } from '../orcad-terminal-census'
 import { pluginConsentRequestSchema } from '../plugins/plugin-consent-request'
 import {
   AccountsUnsubscribeParams,
+  AddClaudeApiKeyParams,
   AddClaudeFromConfigDirParams,
+  AddCodexApiKeyParams,
   AddCodexFromHomeParams,
   AddDataAccountParams,
   BeginClaudeSignInParams,
@@ -42,7 +44,10 @@ import {
   RemoveDataAccountParams,
   SelectAccountParams,
   SelectCodexAccountForTargetParams,
-  SelectDataAccountParams
+  SelectDataAccountParams,
+  TestApiAccountParams,
+  UpdateClaudeApiKeyParams,
+  UpdateCodexApiKeyParams
 } from './accounts-params'
 import { PrepareCodexForWslPaneParams } from './agent-hooks-params'
 import { AgentLaunch, AgentLaunchReplay } from './agent-launch-params'
@@ -604,7 +609,9 @@ import {
 // matches the dispatcher. Clients must import it for types only — parsing a params
 // schema client-side runs the coercing transforms and rewrites the wire bytes.
 export const RPC_PARAMS_BY_METHOD = {
+  'accounts.addClaudeApiKey': AddClaudeApiKeyParams,
   'accounts.addClaudeFromConfigDir': AddClaudeFromConfigDirParams,
+  'accounts.addCodexApiKey': AddCodexApiKeyParams,
   'accounts.addCodexFromHome': AddCodexFromHomeParams,
   'accounts.addDataFromHome': AddDataAccountParams,
   'accounts.antigravityAddCurrent': AntigravityAccountTargetParams,
@@ -625,7 +632,10 @@ export const RPC_PARAMS_BY_METHOD = {
   'accounts.selectCodexForTarget': SelectCodexAccountForTargetParams,
   'accounts.selectData': SelectDataAccountParams,
   'accounts.subscribe': null,
+  'accounts.testApiKey': TestApiAccountParams,
   'accounts.unsubscribe': AccountsUnsubscribeParams,
+  'accounts.updateClaudeApiKey': UpdateClaudeApiKeyParams,
+  'accounts.updateCodexApiKey': UpdateCodexApiKeyParams,
   'agent.launch': AgentLaunch,
   'agent.launchReplay': AgentLaunchReplay,
   'agentHooks.prepareCodexForWslPane': PrepareCodexForWslPaneParams,

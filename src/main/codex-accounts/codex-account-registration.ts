@@ -1,3 +1,4 @@
+import { registerCodexApiKeyAccount, updateCodexApiKeyAccount } from './codex-api-key-registration'
 import { randomUUID } from 'node:crypto'
 import type {
   CodexManagedAccount,
@@ -24,7 +25,7 @@ import {
   type CodexAccountSelectionTarget
 } from './runtime-selection'
 
-type CodexAccountRegistrationDependencies = {
+export type CodexAccountRegistrationDependencies = {
   store: Store
   rateLimits: RateLimitService
   runtimeHome: CodexRuntimeHomeService
@@ -41,6 +42,13 @@ type CodexAccountRegistrationDependencies = {
 
 export class CodexAccountRegistration {
   constructor(private readonly dependencies: CodexAccountRegistrationDependencies) {}
+
+  addApiKey(input: unknown) {
+    return registerCodexApiKeyAccount(input, this.dependencies)
+  }
+  updateApiKey(input: unknown) {
+    return updateCodexApiKeyAccount(input, this.dependencies)
+  }
 
   async add(target?: CodexAccountAddTarget): Promise<CodexRateLimitAccountsState> {
     const accountId = randomUUID()
@@ -78,6 +86,9 @@ export class CodexAccountRegistration {
     options?: CodexAccountReauthenticateOptions
   ): Promise<CodexRateLimitAccountsState> {
     const account = this.dependencies.selection.requireAccount(accountId)
+    if (account.authMethod === 'api-key') {
+      throw new Error('Edit this API account to update its credentials.')
+    }
     const managedHomePath =
       await this.dependencies.managedHomePaths.ensureForReauthentication(account)
     const accountTarget = getCodexSelectionTargetForAccount(account)

@@ -163,6 +163,13 @@ export class CodexAccountService {
     return this.selection.list()
   }
 
+  addApiKeyAccount(input: unknown) {
+    return this.serializeMutation(() => this.registration.addApiKey(input))
+  }
+  updateApiKeyAccount(input: unknown) {
+    return this.serializeMutation(() => this.registration.updateApiKey(input))
+  }
+
   async addAccount(target?: CodexAccountAddTarget): Promise<CodexRateLimitAccountsState> {
     this.supersedePendingLogin()
     return this.serializeMutation(() => this.registration.add(target))

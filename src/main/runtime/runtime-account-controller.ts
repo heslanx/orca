@@ -170,6 +170,21 @@ export class RuntimeAccountController {
     return this.requireServices().claudeAccounts.beginSignIn(request)
   }
 
+  addCodexApiKeyAccount(input: unknown) {
+    return this.requireServices().codexAccounts.addApiKeyAccount(input)
+  }
+  updateCodexApiKeyAccount(input: unknown) {
+    return this.requireServices().codexAccounts.updateApiKeyAccount(input)
+  }
+
+  addClaudeApiKeyAccount(input: unknown): Promise<ClaudeRateLimitAccountsState> {
+    return this.requireServices().claudeAccounts.addApiKeyAccount(input)
+  }
+
+  updateClaudeApiKeyAccount(input: unknown): Promise<ClaudeRateLimitAccountsState> {
+    return this.requireServices().claudeAccounts.updateApiKeyAccount(input)
+  }
+
   finishClaudeSignIn(
     signIn: Omit<ClaudeAccountSignIn, 'configDir'>
   ): Promise<ClaudeRateLimitAccountsState> {

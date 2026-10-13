@@ -14,6 +14,16 @@ import { CLAUDE_PROFILE_MISSING_MESSAGE } from '../../shared/claude-profile-rout
 export async function fetchActiveClaudeRateLimits(
   options?: ClaudeRateLimitFetchOptions
 ): Promise<ProviderRateLimits> {
+  if (options?.authPreparation?.authMethod === 'api-key') {
+    return makeClaudeUsageResult(
+      'unavailable',
+      'API key billing — check usage with your API provider.',
+      {
+        failureKind: 'no-subscription',
+        attemptedSources: []
+      }
+    )
+  }
   const usageError = options?.authPreparation?.usageError
   if (usageError) {
     return makeClaudeUsageResult('error', usageError, {

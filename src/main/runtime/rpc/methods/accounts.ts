@@ -1,3 +1,4 @@
+import { API_KEY_ACCOUNT_METHODS } from './accounts-api-keys'
 import { defineMethod, defineStreamingMethod } from '../core'
 import {
   AddDataAccountParams,
@@ -22,6 +23,7 @@ import {
 let accountsSubscriptionSeq = 0
 
 export const ACCOUNT_METHODS = [
+  ...API_KEY_ACCOUNT_METHODS,
   // Why local only: sign-in runs `claude auth login` in a terminal on the execution host.
   defineMethod({
     name: 'accounts.beginClaudeSignIn',

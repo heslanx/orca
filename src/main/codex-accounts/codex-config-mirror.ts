@@ -1,3 +1,4 @@
+import { refreshCodexApiKeyProfile } from './codex-api-key-profile'
 import { existsSync, readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
@@ -108,6 +109,19 @@ export class CodexConfigMirror {
     canonicalConfig = this.readForManagedHome(managedHomePath),
     expectedAccountId?: string
   ): void {
+    const trustedHome = this.assertManagedHomePath(managedHomePath, expectedAccountId)
+    if (refreshCodexApiKeyProfile(trustedHome)) {
+      return
+    }
+    if (
+      this.store
+        .getSettings()
+        .codexManagedAccounts.some(
+          (account) => account.id === expectedAccountId && account.authMethod === 'api-key'
+        )
+    ) {
+      throw new Error('The Codex API account has no key.')
+    }
     if (canonicalConfig === null) {
       // Why: with no ~/.codex/config.toml there is nothing to mirror, but Codex still cannot start in a long home without the daemon guard.
       // WSL homes are skipped: their ownership check is a blocking wsl.exe call (startup, account switch), and WSL launch prep guards the home it launches.

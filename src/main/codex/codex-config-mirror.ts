@@ -1,3 +1,4 @@
+import { refreshCodexApiKeyProfile } from '../codex-accounts/codex-api-key-profile'
 import { readMcpServerTomlOwnership } from './config-toml-mcp-servers'
 import { dirname, join } from 'node:path'
 import { observeAgentStateFile } from './codex-path-observation'
@@ -29,6 +30,9 @@ export function syncSystemConfigIntoManagedCodexHome(
     systemHomePath: getSystemCodexHomePath()
   }
 ): void {
+  if (refreshCodexApiKeyProfile(homes.runtimeHomePath)) {
+    return
+  }
   if (!mirrorSystemConfigIntoManagedCodexHome(homes)) {
     // Why: a stalled settings mirror must not also withhold the daemon guard,
     // or Codex cannot start at all in a long home.

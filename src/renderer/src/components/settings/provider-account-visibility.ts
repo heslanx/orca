@@ -30,9 +30,9 @@ export function getProviderAccountRuntime(account: ProviderAccount): {
   wslDistro: string | null
 } {
   const runtime =
-    'authMethod' in account
+    'managedAuthRuntime' in account
       ? (account.managedAuthRuntime ?? 'host')
-      : (account.managedHomeRuntime ?? 'host')
+      : (('managedHomeRuntime' in account ? account.managedHomeRuntime : undefined) ?? 'host')
   return {
     runtime,
     wslDistro: account.wslDistro ?? null

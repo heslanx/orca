@@ -1,4 +1,11 @@
+import {
+  CodexApiKeyAccountInputSchema,
+  CodexApiKeyAccountUpdateSchema
+} from '../codex-api-key-account'
+import { ApiAccountConnectionInputSchema } from '../api-account-connection'
 import { z } from 'zod'
+export { ClaudeApiKeyAccountInputSchema as AddClaudeApiKeyParams } from '../claude-api-key-account'
+export { ClaudeApiKeyAccountUpdateSchema as UpdateClaudeApiKeyParams } from '../claude-api-key-account'
 
 export const ManagedDataAccountProviderParams = z.object({
   provider: z.enum(['opencode', 'devin'])
@@ -106,3 +113,7 @@ export const BeginClaudeSignInParams = z
 export const FinishClaudeSignInParams = z
   .object({ accountId: z.string().min(1), ...ClaudeSignInTarget })
   .strict()
+
+export const AddCodexApiKeyParams = CodexApiKeyAccountInputSchema
+export const UpdateCodexApiKeyParams = CodexApiKeyAccountUpdateSchema
+export const TestApiAccountParams = ApiAccountConnectionInputSchema

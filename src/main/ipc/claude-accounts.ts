@@ -1,9 +1,16 @@
 import { ipcMain } from 'electron'
+import { testApiAccountConnection } from '../api-account-connection'
 import type { ClaudeAccountService } from '../claude-accounts/service'
 import type { ClaudeAccountSelectionTarget } from '../claude-accounts/runtime-selection'
 
 export function registerClaudeAccountHandlers(claudeAccounts: ClaudeAccountService): void {
+  ipcMain.handle('claudeAccounts:testApiKey', (_event, args: unknown) =>
+    testApiAccountConnection(args)
+  )
   ipcMain.handle('claudeAccounts:list', () => claudeAccounts.listAccounts())
+  ipcMain.handle('claudeAccounts:addApiKey', (_event, args: unknown) =>
+    claudeAccounts.addApiKeyAccount(args)
+  )
   ipcMain.handle(
     'claudeAccounts:add',
     (_event, args?: ClaudeAccountSelectionTarget & { copyLink?: boolean }) =>

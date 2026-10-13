@@ -114,6 +114,8 @@ export function createClaudeAccountsApi(): PreloadApi['claudeAccounts'] {
   return {
     list: async () => (await fetchAccountsSnapshot(false)).claude,
     add: rejectHostOnlySignIn,
+    addApiKey: rejectHostOnlySignIn,
+    testApiKey: rejectHostOnlySignIn,
     cancelPendingLogin: () => Promise.resolve(false),
     reauthenticate: rejectHostOnlySignIn,
     waitForSignInLink: () => Promise.resolve(null),
@@ -147,6 +149,7 @@ export function createClaudeAccountsApi(): PreloadApi['claudeAccounts'] {
 
 export function createCodexAccountsApi(): PreloadApi['codexAccounts'] {
   return {
+    addApiKey: rejectHostOnlySignIn,
     list: async () => (await fetchAccountsSnapshot(false)).codex,
     add: rejectHostOnlySignIn,
     cancelPendingLogin: () => Promise.resolve(false),

@@ -1,13 +1,20 @@
+import type { CodexApiKeyAccountInput } from '../../shared/codex-api-key-account'
 import type { SecretAtRestProtection } from '../../shared/secret-at-rest-protection'
+import type {
+  ApiAccountConnectionInput,
+  ApiAccountConnectionResult
+} from '../../shared/api-account-connection'
 import type {
   ClaudeRateLimitAccountsState,
   CodexRateLimitAccountsState
 } from '../../shared/managed-account-types'
 import type { CodexConfigSyncStatus } from '../../shared/codex-config-sync-types'
+import type { ClaudeApiKeyAccountInput } from '../../shared/claude-api-key-account'
 import type { CursorAccountStatus, GrokAccountStatus } from '../../shared/rate-limit-types'
 import type { ZcodePlanCredentialsStatus } from '../../shared/zcode-plan-sites'
 
 export type CodexAccountsApi = {
+  addApiKey: (args: CodexApiKeyAccountInput) => Promise<CodexRateLimitAccountsState>
   list: () => Promise<CodexRateLimitAccountsState>
   add: (args?: {
     runtime?: 'host' | 'wsl'
@@ -43,7 +50,9 @@ export type CodexAccountsApi = {
 }
 
 export type ClaudeAccountsApi = {
+  testApiKey: (args: ApiAccountConnectionInput) => Promise<ApiAccountConnectionResult>
   list: () => Promise<ClaudeRateLimitAccountsState>
+  addApiKey: (args: ClaudeApiKeyAccountInput) => Promise<ClaudeRateLimitAccountsState>
   add: (args?: {
     runtime?: 'host' | 'wsl'
     wslDistro?: string | null

@@ -1,4 +1,5 @@
 import type { CodexRateLimitResetOutcome, ProviderRateLimits } from '../../shared/rate-limit-types'
+import { hasCodexApiKeyProfile } from '../codex-accounts/codex-api-key-profile'
 import { isCodexAuthError } from '../../shared/codex-auth-errors'
 import { buildWslExecArgs, buildWslLoginShellCommand } from '../../shared/wsl-login-shell-command'
 import { parseWslUncPath } from '../../shared/wsl-paths'
@@ -159,6 +160,13 @@ async function fetchBackendUsage(
 export async function fetchCodexRateLimits(
   options?: FetchCodexRateLimitsOptions
 ): Promise<ProviderRateLimits> {
+  if (
+    options?.codexHomePath &&
+    !parseWslUncPath(options.codexHomePath) &&
+    hasCodexApiKeyProfile(options.codexHomePath)
+  ) {
+    return codexUnavailable('API key billing — check usage with your API provider.', 'unavailable')
+  }
   if (options?.signal?.aborted) {
     return abortedCodexRateLimitResult()
   }

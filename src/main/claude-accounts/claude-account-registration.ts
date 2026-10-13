@@ -13,6 +13,8 @@ import type {
 } from './claude-account-selection'
 import type { ClaudeCommandConfig } from './claude-command-process'
 import { findDuplicateClaudeAccount } from './claude-duplicate-account'
+import { registerClaudeApiKeyAccount } from './api-key-registration'
+import { updateClaudeApiKeyAccount } from './api-key-update'
 import {
   getClaudeSelectionTargetForAccount,
   normalizeClaudeAccountSelectionTarget,
@@ -24,20 +26,28 @@ export const CLAUDE_SIGN_IN_NOT_FINISHED_MESSAGE =
 const CLAUDE_LOGIN_WITHOUT_ACCOUNT_MESSAGE =
   'Claude login completed, but Orca could not resolve the account email.'
 
+export type ClaudeAccountRegistrationDependencies = {
+  store: ClaudeAccountStore
+  rateLimits: ClaudeAccountUsage
+  runtimeAuth: ClaudeAccountRuntime
+  selection: ClaudeAccountSelection
+}
+
 /**
  * Sign-in runs `claude auth login` against the account's own folder: hidden from Settings, in
  * the user's terminal from the CLI. A folder becomes an account only once it holds a login
  * (superset U/profiles.ts:132,178), so an abandoned sign-in never shows as a row.
  */
 export class ClaudeAccountRegistration {
-  constructor(
-    private readonly deps: {
-      store: ClaudeAccountStore
-      rateLimits: ClaudeAccountUsage
-      runtimeAuth: ClaudeAccountRuntime
-      selection: ClaudeAccountSelection
-    }
-  ) {}
+  constructor(private readonly deps: ClaudeAccountRegistrationDependencies) {}
+
+  addApiKey(input: unknown): Promise<ClaudeRateLimitAccountsState> {
+    return registerClaudeApiKeyAccount(input, this.deps)
+  }
+
+  updateApiKey(input: unknown): Promise<ClaudeRateLimitAccountsState> {
+    return updateClaudeApiKeyAccount(input, this.deps)
+  }
 
   /** A new folder, or a saved account's own folder when `accountId` is given. */
   async begin(request: ClaudeSignInRequest): Promise<ClaudeAccountSignIn> {
@@ -73,6 +83,9 @@ export class ClaudeAccountRegistration {
 
   private async prepare(request: ClaudeSignInRequest) {
     const saved = request.accountId ? this.deps.selection.requireAccount(request.accountId) : null
+    if (saved?.authMethod === 'api-key') {
+      throw new Error('To replace an API key, remove this account and add it again.')
+    }
     const target = saved ? getClaudeSelectionTargetForAccount(saved) : signInTarget(request)
     const accountId = saved?.id ?? randomUUID()
     const folder = await this.deps.runtimeAuth.prepareAccountFolder(accountId, target)

@@ -20,6 +20,11 @@ import {
   type ClaudeProfileSurfaceOutcome
 } from './claude-profile-report'
 import { copyClaudeProfileFile, linkClaudeProfileDirectory } from './claude-profile-sharing'
+import {
+  claudeApiKeyProfileSettings,
+  publishClaudeApiKeySettings,
+  readClaudeApiKeyProfile
+} from './claude-api-key-profile'
 
 const CLAUDE_PROFILE_MEMORY_IMPORT = '@~/.claude/CLAUDE.md\n'
 
@@ -168,8 +173,23 @@ function settingsWithoutOrcaHooks(value: Record<string, unknown>): string {
 }
 
 /** The whole file: the default home is the master copy, proxy address and key included. */
-function copySettings(source: string, target: string): ClaudeProfileSurfaceOutcome {
+function copySettings(
+  source: string,
+  target: string,
+  profileHome: string
+): ClaudeProfileSurfaceOutcome {
   const input = readClaudeProfileObject(source)
+  const apiAccount = readClaudeApiKeyProfile(profileHome)
+  if (apiAccount) {
+    if (input.kind === 'unavailable') {
+      throw new Error('Personal Claude settings are unreadable.')
+    }
+    publishClaudeApiKeySettings(
+      profileHome,
+      claudeApiKeyProfileSettings(input.kind === 'present' ? input.value : {}, apiAccount)
+    )
+    return 'synced'
+  }
   const current = readClaudeProfileObject(target)
   // Why by value: the hook installer rewrites the copy in its own layout after every refresh.
   if (
@@ -302,7 +322,11 @@ export async function provisionClaudeProfile(args: {
     })
   }
   await runClaudeProfileSurface(report, 'settings.json', () =>
-    copySettings(join(defaultHome, 'settings.json'), join(args.profileHome, 'settings.json'))
+    copySettings(
+      join(defaultHome, 'settings.json'),
+      join(args.profileHome, 'settings.json'),
+      args.profileHome
+    )
   )
   const statePath = (configDir: string | undefined): string =>
     resolveClaudeGlobalConfigFile({

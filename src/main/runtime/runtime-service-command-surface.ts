@@ -56,6 +56,10 @@ export type RuntimeServiceCommandSurface = {
   consumeCodexRateLimitResetCredit: RuntimeAccountController['consumeCodexResetCredit']
   removeClaudeAccount: RuntimeAccountController['removeClaude']
   beginClaudeSignIn: RuntimeAccountController['beginClaudeSignIn']
+  addClaudeApiKeyAccount: RuntimeAccountController['addClaudeApiKeyAccount']
+  addCodexApiKeyAccount: RuntimeAccountController['addCodexApiKeyAccount']
+  updateCodexApiKeyAccount: RuntimeAccountController['updateCodexApiKeyAccount']
+  updateClaudeApiKeyAccount: RuntimeAccountController['updateClaudeApiKeyAccount']
   finishClaudeSignIn: RuntimeAccountController['finishClaudeSignIn']
   cancelClaudeSignIn: RuntimeAccountController['cancelClaudeSignIn']
   removeCodexAccount: RuntimeAccountController['removeCodex']
@@ -159,6 +163,10 @@ export function installRuntimeServiceCommandSurface(
     consumeCodexRateLimitResetCredit: accounts.consumeCodexResetCredit.bind(accounts),
     removeClaudeAccount: accounts.removeClaude.bind(accounts),
     beginClaudeSignIn: accounts.beginClaudeSignIn.bind(accounts),
+    addClaudeApiKeyAccount: accounts.addClaudeApiKeyAccount.bind(accounts),
+    addCodexApiKeyAccount: accounts.addCodexApiKeyAccount.bind(accounts),
+    updateCodexApiKeyAccount: accounts.updateCodexApiKeyAccount.bind(accounts),
+    updateClaudeApiKeyAccount: accounts.updateClaudeApiKeyAccount.bind(accounts),
     finishClaudeSignIn: accounts.finishClaudeSignIn.bind(accounts),
     cancelClaudeSignIn: accounts.cancelClaudeSignIn.bind(accounts),
     removeCodexAccount: accounts.removeCodex.bind(accounts),

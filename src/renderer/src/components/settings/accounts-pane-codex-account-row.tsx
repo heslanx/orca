@@ -48,8 +48,9 @@ export function renderCodexAccountRow(
         activeAccountId: activeCodexAccountId,
         accountId: account.id
       })
-  const needsReauthentication = Boolean(accountAuthWarning)
-  const accountDetail = getCodexAccountDisplayDetail(account, codexAccounts.accounts)
+  const needsReauthentication = account.authMethod !== 'api-key' && Boolean(accountAuthWarning)
+  const accountDetail =
+    account.apiKeyConfig?.baseUrl ?? getCodexAccountDisplayDetail(account, codexAccounts.accounts)
   const isReauthing = codexAction === `reauth:${account.id}`
   const isRemoving = codexAction === `remove:${account.id}`
   const isBusy = codexAction !== 'idle' || accountRuntimeUnavailable
@@ -85,6 +86,7 @@ export function renderCodexAccountRow(
         >
           <div className="flex min-w-0 items-center gap-2">
             <span className="truncate text-sm font-medium">{account.email}</span>
+            {account.authMethod === 'api-key' ? <Badge variant="outline">BYOK</Badge> : null}
             <Badge
               variant="outline"
               className="h-4 shrink-0 rounded px-1.5 text-[10px] font-medium leading-none text-foreground/70"
@@ -136,30 +138,32 @@ export function renderCodexAccountRow(
           {/* Why: selecting an account is the primary action in this row.
           Keeping maintenance actions visually lighter prevents re-auth/remove
           controls from overpowering the selection affordance in a dense list. */}
-          <Button
-            variant="ghost"
-            size="xs"
-            onClick={(event) => {
-              event.stopPropagation()
-              void runCodexAccountAction(
-                `reauth:${account.id}`,
-                () =>
-                  window.api.codexAccounts.reauthenticate({
-                    accountId: account.id
-                  }),
-                getProviderAccountRuntime(account)
-              )
-            }}
-            disabled={isRemoteAccountScope || isBusy}
-            className="h-6 px-2 text-muted-foreground hover:text-foreground"
-          >
-            {isReauthing ? (
-              <Loader2 className="size-3 animate-spin" />
-            ) : (
-              <RefreshCw className="size-3" />
-            )}
-            {translate('auto.components.settings.AccountsPane.8a0f870153', 'Re-authenticate')}
-          </Button>
+          {account.authMethod !== 'api-key' ? (
+            <Button
+              variant="ghost"
+              size="xs"
+              onClick={(event) => {
+                event.stopPropagation()
+                void runCodexAccountAction(
+                  `reauth:${account.id}`,
+                  () =>
+                    window.api.codexAccounts.reauthenticate({
+                      accountId: account.id
+                    }),
+                  getProviderAccountRuntime(account)
+                )
+              }}
+              disabled={isRemoteAccountScope || isBusy}
+              className="h-6 px-2 text-muted-foreground hover:text-foreground"
+            >
+              {isReauthing ? (
+                <Loader2 className="size-3 animate-spin" />
+              ) : (
+                <RefreshCw className="size-3" />
+              )}
+              {translate('auto.components.settings.AccountsPane.8a0f870153', 'Re-authenticate')}
+            </Button>
+          ) : null}
           <Button
             variant="ghost"
             size="xs"

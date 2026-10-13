@@ -29,6 +29,8 @@ const credentialRoots: readonly (string | { root: string; only: RegExp })[] = [
  * uses today; a new primitive in one of them is a review, not a silent pass.
  */
 const fsAllowances: Record<string, readonly string[]> = {
+  // Explicit BYOK input lives only in a private account profile, never OAuth credentials.
+  'claude-accounts/claude-api-key-profile.ts': ['writeSecureFile', 'rmSync'],
   'claude-accounts/claude-profile-history.ts': [
     'mkdirSync',
     'renameSync',

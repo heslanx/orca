@@ -1,3 +1,4 @@
+import { readCodexApiKeyProfile } from './codex-api-key-profile'
 import { join } from 'node:path'
 import {
   syncSystemCodexResourcesIntoManagedHome,
@@ -112,6 +113,9 @@ export abstract class CodexRuntimeHomeManagedHome extends CodexRuntimeHomeSync {
     this.lastHostAccountUsedSelfContainedHome = true
     this.sharedAuthRefreshBlockedByManagedTransition = true
     this.markSharedRuntimeAuthManaged(account.id)
+    if (account.authMethod === 'api-key' && !readCodexApiKeyProfile(perAccountHome)) {
+      throw new Error('The Codex API account has no key.')
+    }
     syncSystemCodexResourcesIntoManagedHome(perAccountHome)
     syncSystemConfigIntoManagedCodexHome({
       runtimeHomePath: perAccountHome,

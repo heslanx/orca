@@ -19661,7 +19661,26 @@
       "moreSignInOptions": "More sign-in options",
       "copySignInLink": "Copy sign-in link instead",
       "signInLinkCopied": "Sign-in link copied. Open it in a private window to sign in with a different account.",
-      "signInLinkCopyFailed": "Could not copy the link."
+      "signInLinkCopyFailed": "Could not copy the link.",
+      "byok": {
+        "add": "Add API key",
+        "invalid": "Enter a name, a valid key, and an HTTPS API URL (HTTP is allowed for localhost). Model IDs cannot contain spaces.",
+        "failed": "Could not save the API account. Your entries are still here; try again.",
+        "title": "Add Claude API account",
+        "description": "Use your own Anthropic key or an Anthropic-compatible gateway. Select this account after saving to use it for new Claude sessions.",
+        "storage": "The key is saved in this account’s local Claude settings, readable only by your operating-system user. API usage is billed by your provider.",
+        "name": "Account name",
+        "key": "API key",
+        "url": "API base URL",
+        "urlHint": "Use the gateway base URL, without /v1/messages.",
+        "model": "Default model (optional)",
+        "aliases": "Gateway model aliases (optional)",
+        "cancel": "Cancel",
+        "save": "Save account",
+        "invalidWorkspace": "Use a workspace ID starting with wrkspc_, not an organization ID.",
+        "workspace": "Anthropic workspace ID (optional)",
+        "workspaceHint": "Required for a key that is not scoped to one workspace. Find it in Claude Console → Settings → Workspaces."
+      }
     },
     "managedData": {
       "description": "Add accounts by running this command in a terminal on the Orca host. Selection applies to new explicit agent launches on that host; direct SSH relay and Windows-hosted WSL launches use their own credentials.",
@@ -19676,6 +19695,23 @@
       "removeTitle": "Remove managed account?",
       "removeDescription": "Stop agents using this profile first. Removal deletes its saved credentials and conversation data. Your system login stays unchanged.",
       "cancel": "Cancel"
+    },
+    "byok": {
+      "testFailed": "Could not complete the connection test. Try again.",
+      "test": "Test connection",
+      "testHint": "Sends a short message using these settings. Your provider may charge for this test.",
+      "testSuccess": "Connection verified."
+    },
+    "codex": {
+      "byok": {
+        "invalid": "Enter a name, key, HTTPS API URL and model ID. Organization and project IDs cannot contain spaces.",
+        "title": "Add Codex API account",
+        "description": "Use an OpenAI key or a gateway that supports the Responses API. Save, then select this account for new Codex sessions.",
+        "storage": "The key is saved in this account’s private local files, readable only by your operating-system user. API usage is billed by your provider.",
+        "model": "Model ID",
+        "organization": "OpenAI organization ID (optional)",
+        "project": "OpenAI project ID (optional)"
+      }
     }
   },
   "fileSearch": {

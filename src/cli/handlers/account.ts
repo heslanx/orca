@@ -41,6 +41,8 @@ import {
 import { getWslAccountTarget } from './account-wsl-location'
 import { addDataAccount, listDataAccounts, mutateDataAccount } from './data-account-commands'
 import { formatAccountsBlock, formatDataAccounts } from './account-list-format'
+import { maybeAddClaudeApiAccount, mutateClaudeAccount } from './claude-api-account'
+import { CLAUDE_ACCOUNT_DETAIL_HANDLERS, listClaudeAccounts } from './claude-account-details'
 
 // Why: add returns just that provider's state; list returns the full snapshot.
 type AccountsListSnapshot = {
@@ -259,6 +261,7 @@ async function assertAccountImportSupported(
 
 /** CLI handlers for managed account enrollment and listing. */
 export const ACCOUNT_HANDLERS: Record<string, CommandHandler> = {
+  ...CLAUDE_ACCOUNT_DETAIL_HANDLERS,
   'account add': async (ctx) => {
     const agentFlag = ctx.flags.get('agent')
     // Why: a valueless `--agent` parses as boolean true; defaulting it to claude
@@ -277,6 +280,9 @@ export const ACCOUNT_HANDLERS: Record<string, CommandHandler> = {
       )
     }
     rejectAccountRemoteSelectionFlags(ctx, 'orca account add')
+    if (await maybeAddClaudeApiAccount(ctx, agent)) {
+      return
+    }
     if (agent === 'opencode' || agent === 'devin') {
       await addDataAccount(ctx, agent, runAgentLoginInTerminal)
       return
@@ -289,6 +295,9 @@ export const ACCOUNT_HANDLERS: Record<string, CommandHandler> = {
   'account list': async (ctx) => {
     rejectAccountRemoteSelectionFlags(ctx, 'orca account list')
     const provider = ctx.flags.get('agent')
+    if (provider === 'claude' || provider === 'codex') {
+      return listClaudeAccounts(ctx)
+    }
     if (provider !== undefined) {
       await listDataAccounts(ctx, provider)
       return
@@ -310,10 +319,16 @@ export const ACCOUNT_HANDLERS: Record<string, CommandHandler> = {
   },
   'account select': async (ctx) => {
     rejectAccountRemoteSelectionFlags(ctx, 'orca account select')
+    if (ctx.flags.get('agent') === 'claude' || ctx.flags.get('agent') === 'codex') {
+      return mutateClaudeAccount(ctx, 'select')
+    }
     await mutateDataAccount(ctx, 'select')
   },
   'account rm': async (ctx) => {
     rejectAccountRemoteSelectionFlags(ctx, 'orca account rm')
+    if (ctx.flags.get('agent') === 'claude' || ctx.flags.get('agent') === 'codex') {
+      return mutateClaudeAccount(ctx, 'remove')
+    }
     await mutateDataAccount(ctx, 'remove')
   }
 }

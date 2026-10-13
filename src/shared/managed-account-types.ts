@@ -1,3 +1,6 @@
+import type { CodexApiKeyConfig } from './codex-api-key-account'
+import type { ClaudeApiKeyConfig } from './claude-api-key-account'
+
 export type ManagedDataAccountProvider = 'opencode' | 'devin'
 
 export type ManagedDataAccountSummary = {
@@ -13,6 +16,8 @@ export type ManagedDataAccountsState = {
 }
 
 export type CodexManagedAccount = {
+  authMethod?: 'subscription-oauth' | 'api-key'
+  apiKeyConfig?: CodexApiKeyConfig
   id: string
   email: string
   managedHomePath: string
@@ -28,6 +33,8 @@ export type CodexManagedAccount = {
 }
 
 export type CodexManagedAccountSummary = {
+  authMethod?: 'subscription-oauth' | 'api-key'
+  apiKeyConfig?: CodexApiKeyConfig
   id: string
   email: string
   managedHomeRuntime?: 'host' | 'wsl'
@@ -76,7 +83,8 @@ export type ClaudeManagedAccount = {
   managedAuthRuntime?: 'host' | 'wsl'
   wslDistro?: string | null
   wslLinuxAuthPath?: string | null
-  authMethod: 'subscription-oauth' | 'unknown'
+  authMethod: 'subscription-oauth' | 'api-key' | 'unknown'
+  apiKeyConfig?: ClaudeApiKeyConfig
   organizationUuid?: string | null
   organizationName?: string | null
   createdAt: number
@@ -89,7 +97,8 @@ export type ClaudeManagedAccountSummary = {
   email: string
   managedAuthRuntime?: 'host' | 'wsl'
   wslDistro?: string | null
-  authMethod: 'subscription-oauth' | 'unknown'
+  authMethod: 'subscription-oauth' | 'api-key' | 'unknown'
+  apiKeyConfig?: ClaudeApiKeyConfig
   organizationUuid?: string | null
   organizationName?: string | null
   createdAt: number

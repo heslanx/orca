@@ -1,8 +1,10 @@
+import type { CodexApiKeyAccountInput } from '../../shared/codex-api-key-account'
 import { ipcRenderer } from 'electron'
 import { CODEX_PENDING_LOGIN_URL_CHANGED_CHANNEL } from '../../shared/codex-auth-errors'
 import type { PreloadApi } from '../api-types'
 
 export const codexAccountsApi = {
+  addApiKey: (args: CodexApiKeyAccountInput) => ipcRenderer.invoke('codexAccounts:addApiKey', args),
   list: () => ipcRenderer.invoke('codexAccounts:list'),
   add: (args?: { runtime?: 'host' | 'wsl'; wslDistro?: string | null }) =>
     ipcRenderer.invoke('codexAccounts:add', args),

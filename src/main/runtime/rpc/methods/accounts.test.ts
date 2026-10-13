@@ -43,6 +43,16 @@ describe('account RPC methods', () => {
       /only available/
     ],
     ['accounts.beginClaudeSignIn', {}, /Sign in on the Orca execution host/],
+    [
+      'accounts.addClaudeApiKey',
+      { label: 'Gateway', apiKey: 'test-key', config: { baseUrl: 'https://proxy.example.test' } },
+      /Add API accounts on the Orca execution host/
+    ],
+    [
+      'accounts.updateClaudeApiKey',
+      { accountId: 'api-account', label: 'Renamed gateway' },
+      /Edit API accounts on the Orca execution host/
+    ],
     ['accounts.finishClaudeSignIn', { accountId: 'a' }, /Sign in on the Orca execution host/]
   ] as const)('rejects paired-device calls to %s', async (methodName, params, refusal) => {
     const runtime = {

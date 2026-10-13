@@ -3,6 +3,16 @@ export const FLAG_HELP_TEXT: Record<string, string> = {
   'external-worktree-visibility':
     '--external-worktree-visibility show|hide|inherit  Override or inherit non-Orca worktree visibility',
   agent: '--agent <id>          Launch a known TUI agent in the first terminal',
+  'api-key-stdin':
+    '--api-key-stdin        Read the API key from stdin; never include it in arguments',
+  'base-url': '--base-url <url>       Provider API base URL',
+  'organization-id': '--organization-id <id> OpenAI organization ID (optional)',
+  'project-id': '--project-id <id>      OpenAI project ID (optional)',
+  'workspace-id':
+    '--workspace-id <id>   Anthropic workspace ID (wrkspc_...), not the organization ID',
+  'opus-model': '--opus-model <id>      Gateway model for the Claude Opus alias',
+  'sonnet-model': '--sonnet-model <id>    Gateway model for the Claude Sonnet alias',
+  'haiku-model': '--haiku-model <id>     Gateway model for the Claude Haiku alias',
   'base-branch': '--base-branch <ref>    Base branch/ref to create the worktree from',
   command: '--command <text>       Command to run in the terminal on startup',
   comment: '--comment <text>       Comment stored in Orca metadata',
