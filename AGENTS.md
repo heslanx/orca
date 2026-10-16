@@ -142,3 +142,7 @@ Source-control and review changes must consider GitLab and other supported git p
 ## GitHub CLI Usage
 
 Be mindful of the user's `gh` CLI API rate limit — batch requests where possible and avoid unnecessary calls. All code, commands, and scripts must be compatible with macOS, Linux, and Windows.
+
+## Agent resources
+
+Read [resource lifecycle](docs/reference/resource-lifecycle.md) before starting agents, background processes, servers, browsers or MCP sessions, when accepting worker results, and before finishing or handing off work that used them. Read [orchestration](docs/reference/orchestration-reference.md) when delegating work or receiving a worker assignment.
