@@ -2347,6 +2347,8 @@
           },
           "ResourceUsageStatusSegment": {
             "1b24a32d3a": "Memory",
+            "298f4be7f2": "CPU",
+            "2aa2de6cb9": "Name",
             "4bb076fa89": "Kill",
             "6449a95c78": "How much of this machine's physical RAM the Orca-tracked processes are sitting on.",
             "6d9793d4bc": "Resource Manager - Terminals",
@@ -3188,6 +3190,11 @@
     }
   },
   "settings": {
+    "appearance": {
+      "language": {
+        "portuguese": "Português (Brasil)"
+      }
+    },
     "browser": {
       "clientHostedRemote": {
         "description": "Render remote workspace pages on this desktop; network traffic still goes through the remote host. Applies to new pages only.",
