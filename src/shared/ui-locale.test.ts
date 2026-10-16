@@ -5,6 +5,7 @@ import {
   UI_LANGUAGE_CHINESE,
   UI_LANGUAGE_ENGLISH,
   UI_LANGUAGE_FRENCH,
+  UI_LANGUAGE_PORTUGUESE,
   UI_LANGUAGE_JAPANESE,
   UI_LANGUAGE_KOREAN,
   UI_LANGUAGE_SPANISH,
@@ -14,6 +15,7 @@ import {
 describe('ui-locale', () => {
   it('normalizes supported locale prefixes', () => {
     expect(normalizeSupportedUiLocale('en-US')).toBe('en')
+    expect(normalizeSupportedUiLocale('pt-BR')).toBe('pt')
     expect(normalizeSupportedUiLocale('zh-CN')).toBe('zh')
     expect(normalizeSupportedUiLocale('zh-Hans')).toBe('zh')
     expect(normalizeSupportedUiLocale('zh-SG')).toBe('zh')
@@ -51,6 +53,11 @@ describe('ui-locale', () => {
 
   it('resolves explicit French independently of system locale', () => {
     expect(resolveUiLocale(UI_LANGUAGE_FRENCH, 'en-US')).toBe('fr')
+  })
+
+  it('resolves Brazilian Portuguese independently of the system locale', () => {
+    expect(resolveUiLocale(UI_LANGUAGE_PORTUGUESE, 'en-US')).toBe('pt')
+    expect(resolveUiLocale(UI_LANGUAGE_SYSTEM, 'pt-BR')).toBe('pt')
   })
 
   it('preserves a selected plugin language bundle id', () => {

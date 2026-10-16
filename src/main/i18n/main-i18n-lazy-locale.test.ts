@@ -13,6 +13,7 @@ vi.mock('electron', () => ({
 import {
   UI_LANGUAGE_CHINESE,
   UI_LANGUAGE_ENGLISH,
+  UI_LANGUAGE_PORTUGUESE,
   UI_LANGUAGE_JAPANESE,
   UI_LANGUAGE_KOREAN,
   UI_LANGUAGE_SPANISH
@@ -36,6 +37,11 @@ describe('main-i18n lazy locale loading', () => {
     expect(translateMain('missing.main.key', 'Fallback copy')).toBe('Fallback copy')
     expect(translateMain('menu.file', 'File')).toBe('File')
     expect(translateMain('menu.settings', 'Settings')).toBe('Settings')
+  })
+
+  it('loads Brazilian Portuguese before main-process translations are read', async () => {
+    expect(await setMainUiLanguage(UI_LANGUAGE_PORTUGUESE)).toBe('pt')
+    expect(translateMain('menu.file', 'File')).toBe('Arquivo')
   })
 
   it('lazy-loads the Spanish catalog before changeLanguage resolves', async () => {
