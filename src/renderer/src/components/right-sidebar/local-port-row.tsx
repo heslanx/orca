@@ -1,3 +1,8 @@
+import {
+  formatOptionalProcessCpuPercent,
+  formatOptionalProcessMemoryBytes,
+  formatOptionalProcessUptime
+} from '@/lib/format-process-resource-usage'
 import React, { useCallback } from 'react'
 import { Box, Copy, ExternalLink, Info, Server, Trash2 } from 'lucide-react'
 import { getPortOpenBrowserTooltipLabel } from '@/lib/workspace-port-actions'
@@ -114,8 +119,17 @@ export function LocalPortRow({
                 <span className="text-xs font-medium text-foreground">:{port.port}</span>
                 <span className="truncate text-xs text-muted-foreground">{processLabel}</span>
               </div>
-              <div className="flex min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground">
+              <div className="flex min-w-0 items-center justify-between gap-1.5 text-[11px] text-muted-foreground">
                 <span className="truncate">{address}</span>
+                {port.pid != null && (
+                  <span className="shrink-0 font-mono tabular-nums text-muted-foreground/70">
+                    {formatOptionalProcessCpuPercent(port.cpu)}
+                    {' · '}
+                    {formatOptionalProcessMemoryBytes(port.memory)}
+                    {' · '}
+                    {formatOptionalProcessUptime(port.uptimeSeconds)}
+                  </span>
+                )}
               </div>
               <div className="flex min-w-0 items-center gap-1.5 text-[10px] text-muted-foreground/70">
                 <span className="truncate">{ownerLabel}</span>

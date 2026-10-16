@@ -17,6 +17,8 @@ import type { WorkspacePortGroup } from '@/lib/workspace-port-groups'
 import { useLocalhostLabelRouteForPort } from '@/lib/workspace-port-localhost-label-selector'
 import { useWorktreeRuntimeTarget } from '@/runtime/use-worktree-runtime-target'
 import { useAppStore } from '@/store'
+import { MetricPair, ROW_TRAILING_GUTTER_CLS } from './process-resource-metric-columns'
+import { Sparkline } from './process-metric-sparkline'
 import type { WorkspacePort } from '../../../../shared/workspace-ports'
 import { translate } from '@/i18n/i18n'
 
@@ -253,8 +255,22 @@ export function PortRow({
             </PortAction>
           </div>
         </div>
-        <div className="select-text truncate text-[10px] text-muted-foreground/70">
-          {external ? port.kind : addressForPort(port)}
+        <div className="flex min-w-0 items-center justify-between gap-2">
+          <span className="select-text truncate text-[10px] text-muted-foreground/70">
+            {external ? port.kind : addressForPort(port)}
+          </span>
+          {port.pid != null && (
+            <div className="flex shrink-0 items-center gap-2">
+              <MetricPair
+                cpu={port.cpu}
+                memory={port.memory}
+                uptimeSeconds={port.uptimeSeconds}
+                showUptime
+                size="small"
+              />
+              <span className={ROW_TRAILING_GUTTER_CLS} aria-hidden />
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -263,10 +279,13 @@ export function PortRow({
 
 export function WorkspaceGroupRows({
   group,
-  activeWorktreeId
+  activeWorktreeId,
+  history
 }: {
   group: WorkspacePortGroup
   activeWorktreeId: string | null
+  /** Oldest-first memory samples (bytes) recorded while the popover was open. */
+  history: number[]
 }): React.JSX.Element {
   const handleGoToWorkspace = useCallback(
     (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -290,7 +309,8 @@ export function WorkspaceGroupRows({
         <span className="min-w-0 truncate text-[12px] font-medium text-foreground">
           {group.displayName}
         </span>
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="flex shrink-0 items-center gap-1.5">
+          <Sparkline samples={history} />
           <PortAction
             label={translate(
               'auto.components.status.bar.ports.status.popover.rows.a49ea79246',

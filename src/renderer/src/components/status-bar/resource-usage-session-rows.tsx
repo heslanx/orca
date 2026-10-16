@@ -62,7 +62,13 @@ export function SessionRow({
       <span className="text-[11px] text-muted-foreground truncate min-w-0 flex-1">
         {session.label}
       </span>
-      <MetricPair cpu={session.cpu} memory={session.memory} size="small" />
+      <MetricPair
+        showUptime
+        uptimeSeconds={session.uptimeSeconds}
+        cpu={session.cpu}
+        memory={session.memory}
+        size="small"
+      />
       {/* Why: kill X sits in the shared gutter for column alignment; bound rows reveal it on hover/focus, orphan rows always show it as reclaimable; a server's own samples are not this client's to end. */}
       <span className={ROW_TRAILING_GUTTER_CLS}>
         {session.readOnly ? null : (
@@ -97,7 +103,7 @@ function BrowserRow({ browser }: { browser: BrowserWorkspace }): React.JSX.Eleme
     <div className="flex items-center gap-2 pl-10 pr-3 py-1.5">
       <Globe className="size-3 shrink-0 text-muted-foreground" aria-hidden />
       <span className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground">{label}</span>
-      <MetricPair cpu={null} memory={null} size="small" />
+      <MetricPair showUptime cpu={null} memory={null} size="small" />
       <span className={ROW_TRAILING_GUTTER_CLS} aria-hidden />
     </div>
   )
@@ -248,7 +254,7 @@ export function WorktreeRow({
               </div>
             )}
           </div>
-          <MetricPair cpu={worktree.cpu} memory={worktree.memory} />
+          <MetricPair showUptime cpu={worktree.cpu} memory={worktree.memory} />
           <span className={ROW_TRAILING_GUTTER_CLS} aria-hidden />
         </div>
       </div>

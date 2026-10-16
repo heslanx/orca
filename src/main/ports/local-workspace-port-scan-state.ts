@@ -29,12 +29,18 @@ export type RawListeningPort = {
   socketId?: string
   commandLine?: string
   cwd?: string
+  cpu?: number
+  memory?: number
+  uptimeSeconds?: number
 }
 
 export type ProcessMetadata = {
   processName?: string
   commandLine?: string
   cwd?: string
+  cpu?: number
+  memory?: number
+  uptimeSeconds?: number
 }
 
 type RememberedListenerMetadata = ProcessMetadata & {

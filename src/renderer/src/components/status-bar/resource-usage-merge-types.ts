@@ -27,6 +27,8 @@ export type UnifiedSessionRow = {
   hasLocalSamples: boolean
   /** Sampled on a paired server; this client cannot end it. */
   readOnly?: true
+  /** Seconds since the session's root process started; `null` when unavailable. */
+  uptimeSeconds: Metric
 }
 
 export type UnifiedWorktreeRow = {

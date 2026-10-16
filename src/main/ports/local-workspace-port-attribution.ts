@@ -79,7 +79,10 @@ export function enrichPort(
     port: port.port,
     pid: port.pid,
     processName: port.processName,
-    protocol: inferProtocol(port.port)
+    protocol: inferProtocol(port.port),
+    cpu: port.cpu,
+    memory: port.memory,
+    uptimeSeconds: port.uptimeSeconds
   }
 
   if (owner) {

@@ -1,20 +1,13 @@
-import { activateAndRevealWorktree } from '@/lib/worktree-activation'
 import type { useAppStore } from '@/store'
-import { assertRuntimeEnvironmentCapability, callRuntimeRpc } from '@/runtime/runtime-rpc-client'
+import { callRuntimeRpc } from '@/runtime/runtime-rpc-client'
 import { RuntimeRpcCallError } from '@/runtime/runtime-rpc-result'
 import type { RuntimeClientTarget } from '../../../shared/runtime-client-target'
-import { toRuntimeWorktreeSelector } from '@/runtime/runtime-worktree-selector'
 import type {
   WorkspacePort,
   WorkspacePortKillResult,
   WorkspacePortScanResult
 } from '../../../shared/workspace-ports'
-import type { LocalhostWorktreeLabelRoute } from '../../../shared/localhost-worktree-labels'
 import { runWorkspacePortScanForTarget } from './workspace-port-scan-client'
-import { browserUrlForPort } from './workspace-port-urls'
-import { createBrowserUuid } from './browser-uuid'
-import { BROWSER_SCREENCAST_RUNTIME_CAPABILITY } from '../../../shared/protocol-version'
-import { RUNTIME_BROWSER_UNAVAILABLE_MESSAGE } from './client-creation-action-policy'
 
 export { addressForPort } from './workspace-port-urls'
 
@@ -31,10 +24,6 @@ export function canStopWorkspacePort(
   return port.kind === 'workspace' && Boolean(port.pid) && port.processName !== 'Electron'
 }
 
-type BrowserTabCreator = ReturnType<typeof useAppStore.getState>['createBrowserTab']
-type RemoteBrowserPageHandleSetter = ReturnType<
-  typeof useAppStore.getState
->['setRemoteBrowserPageHandle']
 type WorkspacePortScanRefreshingSetter = ReturnType<
   typeof useAppStore.getState
 >['setWorkspacePortScanRefreshing']
@@ -51,128 +40,15 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms))
 }
 
-export function shouldOpenWorkspacePortInOrcaBrowser(
-  settings: { openLinksInApp?: boolean } | null | undefined
-): boolean {
-  return settings?.openLinksInApp === true
-}
-
-function isMacShortcutPlatform(): boolean {
-  return typeof navigator !== 'undefined' && navigator.userAgent.includes('Mac')
-}
-
-export function getPortSystemBrowserHint(isMac: boolean = isMacShortcutPlatform()): string {
-  return isMac ? '⇧⌘+click for system browser' : 'Shift+Ctrl+click for system browser'
-}
-
-export function getPortOpenBrowserTooltipLabel(openLabel: string, isMac?: boolean): string {
-  return `${openLabel}. ${getPortSystemBrowserHint(isMac)}`
-}
-
-type PortOpenClickEvent = Pick<MouseEvent, 'metaKey' | 'ctrlKey' | 'shiftKey'>
-
-export function resolvePortOpenInOrcaBrowser({
-  settings,
-  event,
-  isMac
-}: {
-  settings: { openLinksInApp?: boolean } | null | undefined
-  event?: PortOpenClickEvent | null
-  isMac: boolean
-}): boolean {
-  // Why: Shift+Cmd/Ctrl is the external-browser escape hatch; no pointer
-  // event means context-menu and keyboard opens should keep the saved setting.
-  if (event?.shiftKey && (isMac ? event.metaKey : event.ctrlKey)) {
-    return false
-  }
-  return shouldOpenWorkspacePortInOrcaBrowser(settings)
-}
-
-export function workspacePortOwnerWorktreeId(port: WorkspacePort): string | null {
-  return port.kind === 'workspace' ? port.owner.worktreeId : null
-}
-
-export function goToWorkspacePortOwner(port: WorkspacePort): boolean {
-  const worktreeId = workspacePortOwnerWorktreeId(port)
-  return Boolean(worktreeId && activateAndRevealWorktree(worktreeId))
-}
-
-export async function openWorkspacePortInBrowser(args: {
-  port: WorkspacePort
-  activeWorktreeId?: string | null
-  runtimeTarget: RuntimeClientTarget | null
-  createBrowserTab: BrowserTabCreator
-  setRemoteBrowserPageHandle: RemoteBrowserPageHandleSetter
-  openInOrcaBrowser?: boolean
-  localhostLabelRoute?: LocalhostWorktreeLabelRoute | null
-}): Promise<{ ok: true } | { ok: false; reason: string }> {
-  if (!args.runtimeTarget) {
-    return { ok: false, reason: WORKSPACE_PORT_TARGET_UNAVAILABLE_REASON }
-  }
-  const rawUrl = browserUrlForPort(args.port)
-  let url = rawUrl
-  if (args.runtimeTarget.kind === 'local' && args.localhostLabelRoute) {
-    try {
-      url = (await window.api.localhostWorktreeLabels.register(args.localhostLabelRoute)).url
-    } catch {
-      url = rawUrl
-    }
-  }
-  if (args.openInOrcaBrowser === false && args.runtimeTarget.kind === 'local') {
-    try {
-      await window.api.shell.openUrl(url)
-      return { ok: true }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      return { ok: false, reason: message || 'Failed to open system browser.' }
-    }
-  }
-
-  const worktreeId =
-    args.port.kind === 'workspace' ? args.port.owner.worktreeId : args.activeWorktreeId
-  if (!worktreeId) {
-    return { ok: false, reason: 'No workspace selected for the browser.' }
-  }
-  // Why: the browser tab opened below is this jump's surface; seeding a shell would add a
-  // PTY the user never asked for in a workspace whose last terminal they closed.
-  activateAndRevealWorktree(worktreeId, { providesInitialSurface: true })
-  if (args.runtimeTarget.kind === 'environment') {
-    try {
-      await assertRuntimeEnvironmentCapability(
-        args.runtimeTarget.environmentId,
-        BROWSER_SCREENCAST_RUNTIME_CAPABILITY,
-        RUNTIME_BROWSER_UNAVAILABLE_MESSAGE
-      )
-      const remotePage = await callRuntimeRpc<{ browserPageId: string }>(
-        args.runtimeTarget,
-        'browser.tabCreate',
-        { worktree: toRuntimeWorktreeSelector(worktreeId), url },
-        { timeoutMs: 30_000 }
-      )
-      const browserPageId = createBrowserUuid()
-      args.createBrowserTab(worktreeId, url, {
-        activate: true,
-        browserRuntimeEnvironmentId: args.runtimeTarget.environmentId,
-        browserPageId
-      })
-      args.setRemoteBrowserPageHandle(browserPageId, {
-        environmentId: args.runtimeTarget.environmentId,
-        remotePageId: remotePage.browserPageId
-      })
-      return { ok: true }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      return { ok: false, reason: message || 'Failed to open remote browser.' }
-    }
-  }
-  try {
-    args.createBrowserTab(worktreeId, url, { activate: true })
-    return { ok: true }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    return { ok: false, reason: message || 'Failed to open browser.' }
-  }
-}
+export {
+  shouldOpenWorkspacePortInOrcaBrowser,
+  getPortSystemBrowserHint,
+  getPortOpenBrowserTooltipLabel,
+  resolvePortOpenInOrcaBrowser,
+  workspacePortOwnerWorktreeId,
+  goToWorkspacePortOwner,
+  openWorkspacePortInBrowser
+} from './workspace-port-browser-open'
 
 /**
  * Stores one host's scan and republishes the aggregate the status bar reads.

@@ -5,6 +5,7 @@
  * stays readable on its own.
  */
 
+import { dotnetTicksToUnixMs } from '../../shared/ps-elapsed-time'
 import {
   iterateProcessOutputLines,
   PROCESS_OUTPUT_FIELD_SCAN_MAX_CHARS
@@ -37,6 +38,7 @@ export type WindowsProcessResourceRow = {
   memory: number
   /** Committed private bytes, resident or paged out. Absent when the host did not report it. */
   privateMemory?: number
+  uptimeSeconds?: number
 }
 
 export type WindowsCpuTimes = {
@@ -70,24 +72,28 @@ export function parseWindowsProcessSample(stdout: string): ParsedWindowsProcessS
     if (!Number.isSafeInteger(pid) || pid <= 0 || !Number.isSafeInteger(ppid) || ppid < 0) {
       continue
     }
+    const startTimeId = fields[5] ?? ''
+    const hasStartTime = /^\d+$/.test(startTimeId) && !/^0+$/.test(startTimeId)
     const privateMemory = parseCimPageFileBytes(fields[6])
     rows.push({
       pid,
       ppid,
       cpu: 0,
       memory: Number.isFinite(memory) && memory > 0 ? memory : 0,
-      ...(privateMemory === null ? {} : { privateMemory })
+      ...(privateMemory === null ? {} : { privateMemory }),
+      ...(hasStartTime
+        ? {
+            uptimeSeconds: Math.max(
+              0,
+              Math.floor((Date.now() - dotnetTicksToUnixMs(BigInt(startTimeId))) / 1000)
+            )
+          }
+        : {})
     })
 
     const kernelTicks = parseUnsignedBigInt(fields[3])
     const userTicks = parseUnsignedBigInt(fields[4])
-    const startTimeId = fields[5] ?? ''
-    if (
-      kernelTicks !== null &&
-      userTicks !== null &&
-      /^\d+$/.test(startTimeId) &&
-      !/^0+$/.test(startTimeId)
-    ) {
+    if (kernelTicks !== null && userTicks !== null && hasStartTime) {
       cpuByPid.set(pid, { cpuTicks: kernelTicks + userTicks, startTimeId })
     }
   }

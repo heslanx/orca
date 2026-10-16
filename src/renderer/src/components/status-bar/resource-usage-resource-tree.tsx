@@ -1,9 +1,9 @@
+import { sortByProcessMetric, type ProcessMetricSortOption } from '@/lib/sort-by-process-metric'
 import React, { useMemo } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { translate } from '@/i18n/i18n'
 import { useWorktreeMap } from '../../store/selectors'
 import type {
-  Metric,
   UnifiedProjectGroup,
   UnifiedSessionRow,
   UnifiedWorktreeRow
@@ -11,46 +11,36 @@ import type {
 import { MetricPair, ROW_TRAILING_GUTTER_CLS } from './resource-usage-metrics'
 import { WorktreeRow } from './resource-usage-session-rows'
 
-export type SortOption = 'memory' | 'cpu' | 'name'
+export type SortOption = ProcessMetricSortOption
 
 // ─── Sorting ────────────────────────────────────────────────────────
 
-function compareMetricDesc(a: Metric, b: Metric): number {
-  // Why: null metrics (remote rows) sort last regardless of direction so they don't pollute the "biggest consumers" view.
-  if (a === null && b === null) {
-    return 0
+function maxSessionUptime(sessions: readonly UnifiedSessionRow[]): number | null {
+  let max: number | null = null
+  for (const session of sessions) {
+    if (session.uptimeSeconds != null && (max === null || session.uptimeSeconds > max)) {
+      max = session.uptimeSeconds
+    }
   }
-  if (a === null) {
-    return 1
-  }
-  if (b === null) {
-    return -1
-  }
-  return b - a
+  return max
 }
 
 function sortWorktrees(list: UnifiedWorktreeRow[], sort: SortOption): UnifiedWorktreeRow[] {
-  const copy = [...list]
-  if (sort === 'memory') {
-    copy.sort((a, b) => compareMetricDesc(a.memory, b.memory))
-  } else if (sort === 'cpu') {
-    copy.sort((a, b) => compareMetricDesc(a.cpu, b.cpu))
-  } else {
-    copy.sort((a, b) => a.worktreeName.localeCompare(b.worktreeName))
-  }
-  return copy
+  return sortByProcessMetric(list, sort, {
+    name: (worktree) => worktree.worktreeName,
+    cpu: (worktree) => worktree.cpu,
+    memory: (worktree) => worktree.memory,
+    uptime: (worktree) => maxSessionUptime(worktree.sessions)
+  })
 }
 
 function sortProjectGroups(groups: UnifiedProjectGroup[], sort: SortOption): UnifiedProjectGroup[] {
-  const copy = [...groups]
-  if (sort === 'memory') {
-    copy.sort((a, b) => compareMetricDesc(a.memory, b.memory))
-  } else if (sort === 'cpu') {
-    copy.sort((a, b) => compareMetricDesc(a.cpu, b.cpu))
-  } else {
-    copy.sort((a, b) => a.repoName.localeCompare(b.repoName))
-  }
-  return copy
+  return sortByProcessMetric(groups, sort, {
+    name: (group) => group.repoName,
+    cpu: (group) => group.cpu,
+    memory: (group) => group.memory,
+    uptime: (group) => maxSessionUptime(group.worktrees.flatMap((worktree) => worktree.sessions))
+  })
 }
 
 // ─── Repo + worktree tree ───────────────────────────────────────────
@@ -156,7 +146,7 @@ export function ResourceTree({
                   )}
                 </span>
                 <div className="flex items-center gap-2 shrink-0">
-                  <MetricPair cpu={group.cpu} memory={group.memory} />
+                  <MetricPair showUptime cpu={group.cpu} memory={group.memory} />
                   <span className={ROW_TRAILING_GUTTER_CLS} aria-hidden />
                 </div>
               </div>

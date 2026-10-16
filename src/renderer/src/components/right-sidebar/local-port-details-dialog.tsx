@@ -1,3 +1,8 @@
+import {
+  formatOptionalProcessCpuPercent,
+  formatOptionalProcessMemoryBytes,
+  formatOptionalProcessUptime
+} from '@/lib/format-process-resource-usage'
 import React from 'react'
 import {
   Dialog,
@@ -66,6 +71,18 @@ export function LocalPortDetailsDialog({
               {port.pid ??
                 translate('auto.components.right.sidebar.PortsPanel.3e13cb63ee', 'Unknown')}
             </dd>
+            <dt className="text-muted-foreground">
+              {translate('auto.components.right.sidebar.PortsPanel.cpu', 'CPU')}
+            </dt>
+            <dd className="text-foreground">{formatOptionalProcessCpuPercent(port.cpu)}</dd>
+            <dt className="text-muted-foreground">
+              {translate('auto.components.right.sidebar.PortsPanel.memoryRss', 'Memory (RSS)')}
+            </dt>
+            <dd className="text-foreground">{formatOptionalProcessMemoryBytes(port.memory)}</dd>
+            <dt className="text-muted-foreground">
+              {translate('auto.components.right.sidebar.PortsPanel.uptime', 'Uptime')}
+            </dt>
+            <dd className="text-foreground">{formatOptionalProcessUptime(port.uptimeSeconds)}</dd>
             {port.kind === 'workspace' && (
               <>
                 <dt className="text-muted-foreground">

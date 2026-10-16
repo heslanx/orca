@@ -39,7 +39,16 @@ describe('parseWindowsProcessOutput', () => {
     // 5,600,000 KB of commit behind a 96 MB working set is the reported shape.
     expect(
       parseWindowsProcessOutput('100\t1\t100663296\t0\t0\t638830000000000000\t5600000')
-    ).toEqual([{ pid: 100, ppid: 1, cpu: 0, memory: 100663296, privateMemory: 5600000 * 1024 }])
+    ).toEqual([
+      {
+        pid: 100,
+        ppid: 1,
+        cpu: 0,
+        memory: 100663296,
+        privateMemory: 5600000 * 1024,
+        uptimeSeconds: expect.any(Number)
+      }
+    ])
   })
 
   it('leaves committed bytes absent when the host omits PageFileUsage', async () => {
@@ -61,7 +70,7 @@ describe('parseWindowsProcessOutput', () => {
     const { parseWindowsProcessOutput } = await loadWindowsProcessSampleParsing()
 
     expect(parseWindowsProcessOutput('100\t1\t\t200\t300\t638830000000000000')).toEqual([
-      { pid: 100, ppid: 1, cpu: 0, memory: 0 }
+      { pid: 100, ppid: 1, cpu: 0, memory: 0, uptimeSeconds: expect.any(Number) }
     ])
   })
 })

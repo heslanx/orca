@@ -17,10 +17,6 @@
 import { exec } from 'node:child_process'
 import { promisify } from 'node:util'
 import os from 'node:os'
-import {
-  getProcessOutputFields,
-  iterateProcessOutputLines
-} from '../../shared/process-output-field-scanner'
 import { getAppEnvironment, type AppEnvironment } from '../../shared/app-environment'
 import type {
   AppMemory,
@@ -51,6 +47,8 @@ import {
   optionalCommitField,
   snapshotCommitFields
 } from './memory-snapshot-values'
+import { parsePsOutput, type ProcRow } from './unix-process-sample-parsing'
+export { parsePsOutput } from './unix-process-sample-parsing'
 
 export type { MemorySnapshotStore } from './memory-snapshot-buckets'
 
@@ -84,18 +82,6 @@ export async function collectMemorySnapshot(store: MemorySnapshotStore): Promise
 const execAsync = promisify(exec)
 const PS_EXEC_TIMEOUT_MS = 5_000
 const PS_MAX_BUFFER = 10 * 1024 * 1024
-
-/** One row from the host-wide process listing. */
-type ProcRow = {
-  pid: number
-  ppid: number
-  /** Percent of one core (may exceed 100 on multi-core). */
-  cpu: number
-  /** Resident memory in bytes. */
-  memory: number
-  /** Committed bytes, resident or paged out. Absent when the host cannot report it. */
-  privateMemory?: number
-}
 
 /** Indexed view of a single host process sweep. */
 type ProcIndex = {
@@ -138,7 +124,7 @@ async function enumerateUnix(): Promise<ProcRow[]> {
   // silently drops the fractional part at a comma. Forcing C locale keeps
   // decimals as dots.
   try {
-    const { stdout } = await execAsync('ps -eo pid=,ppid=,pcpu=,rss=', {
+    const { stdout } = await execAsync('ps -eo pid=,ppid=,pcpu=,rss=,etime=', {
       maxBuffer: PS_MAX_BUFFER,
       timeout: PS_EXEC_TIMEOUT_MS,
       env: { ...process.env, LC_ALL: 'C', LANG: 'C' }
@@ -148,31 +134,6 @@ async function enumerateUnix(): Promise<ProcRow[]> {
     console.warn('[memory] ps enumeration failed', err)
     return []
   }
-}
-
-/** Exported for tests: parses `ps -eo pid=,ppid=,pcpu=,rss=` output. */
-export function parsePsOutput(stdout: string): ProcRow[] {
-  const rows: ProcRow[] = []
-  for (const line of iterateProcessOutputLines(stdout)) {
-    const fields = getProcessOutputFields(line, 4)
-    if (fields.length < 4) {
-      continue
-    }
-    const pid = Number.parseInt(fields[0], 10)
-    const ppid = Number.parseInt(fields[1], 10)
-    const cpu = Number.parseFloat(fields[2])
-    const rssKb = Number.parseInt(fields[3], 10)
-    if (Number.isNaN(pid) || Number.isNaN(ppid)) {
-      continue
-    }
-    rows.push({
-      pid,
-      ppid,
-      cpu: Number.isFinite(cpu) && cpu > 0 ? cpu : 0,
-      memory: Number.isFinite(rssKb) && rssKb > 0 ? rssKb * 1024 : 0
-    })
-  }
-  return rows
 }
 
 async function enumerateWindows(): Promise<ProcRow[]> {
@@ -325,7 +286,10 @@ async function runSnapshot(store: MemorySnapshotStore): Promise<MemorySnapshot> 
       pid: pty.pid ?? 0,
       cpu: clampMemoryMetric(sessionCpu),
       memory: clampMemoryMetric(sessionMemory),
-      ...optionalCommitField(processIndex.hasPrivateMemory, sessionPrivateMemory)
+      ...optionalCommitField(processIndex.hasPrivateMemory, sessionPrivateMemory),
+      // Why: uptime is the root shell's own age, not a subtree aggregate —
+      // summing children's ages the way cpu/memory are summed makes no sense.
+      uptimeSeconds: pty.pid != null ? processIndex.byPid.get(pty.pid)?.uptimeSeconds : undefined
     }
 
     let bucket: WorktreeMemoryBucket

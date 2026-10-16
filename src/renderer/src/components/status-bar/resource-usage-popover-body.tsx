@@ -1,18 +1,12 @@
 import React, { type Dispatch, type SetStateAction } from 'react'
 import { ChevronRight } from 'lucide-react'
-import { cn } from '@/lib/utils'
 import { translate } from '@/i18n/i18n'
 import type { MemorySnapshot } from '../../../../shared/process-stats-types'
 import type { UnifiedProjectGroup, UnifiedSessionRow } from './resource-usage-merge-types'
 import type { SortOption } from './resource-usage-resource-tree'
 import { ResourceTree } from './resource-usage-resource-tree'
-import {
-  AppSection,
-  CPU_COLUMN_CLS,
-  MEM_COLUMN_CLS,
-  METRIC_COLUMNS_CLS,
-  ROW_TRAILING_GUTTER_CLS
-} from './resource-usage-metrics'
+import { AppSection } from './resource-usage-metrics'
+import { ProcessMetricSortHeader } from './process-resource-metric-columns'
 import type { getResourceMemoryMetricCopy } from './resource-memory-metric-copy'
 
 export function renderResourceUsagePopoverBody({
@@ -59,56 +53,16 @@ export function renderResourceUsagePopoverBody({
   return (
     <div ref={setPopoverBodyNode} tabIndex={-1} className="flex h-[420px] flex-col outline-none">
       {(unifiedRepos.length > 0 || resourceSnapshot) && (
-        <div className="flex items-center justify-between px-3 py-1 bg-muted/30 border-b border-border/50 text-[10px] uppercase tracking-wide shrink-0">
-          <button
-            type="button"
-            onClick={() => setSortOption('name')}
-            className={cn(
-              'hover:text-foreground transition-colors',
-              sortOption === 'name' ? 'font-semibold text-foreground' : 'text-muted-foreground/80'
-            )}
-            aria-pressed={sortOption === 'name'}
-          >
-            {translate('auto.components.status.bar.ResourceUsageStatusSegment.2aa2de6cb9', 'Name')}
-          </button>
-          <div className="flex items-center gap-2 shrink-0">
-            <div className={cn(METRIC_COLUMNS_CLS, 'text-[10px]')}>
-              <button
-                type="button"
-                onClick={() => setSortOption('cpu')}
-                className={cn(
-                  CPU_COLUMN_CLS,
-                  'hover:text-foreground transition-colors',
-                  sortOption === 'cpu'
-                    ? 'font-semibold text-foreground'
-                    : 'text-muted-foreground/80'
-                )}
-                aria-pressed={sortOption === 'cpu'}
-              >
-                {translate(
-                  'auto.components.status.bar.ResourceUsageStatusSegment.298f4be7f2',
-                  'CPU'
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={() => setSortOption('memory')}
-                className={cn(
-                  MEM_COLUMN_CLS,
-                  'hover:text-foreground transition-colors',
-                  sortOption === 'memory'
-                    ? 'font-semibold text-foreground'
-                    : 'text-muted-foreground/80'
-                )}
-                aria-pressed={sortOption === 'memory'}
-              >
-                {memoryMetricCopy.columnLabel}
-              </button>
-            </div>
-            {/* Why: empty trailing gutter keeps CPU/Memory header cells aligned with rows that reserve this width for the kill-X. */}
-            <span className={ROW_TRAILING_GUTTER_CLS} aria-hidden />
-          </div>
-        </div>
+        <ProcessMetricSortHeader
+          sortOption={sortOption}
+          onSortOptionChange={setSortOption}
+          memoryLabel={memoryMetricCopy.columnLabel}
+          showUptimeColumn
+          uptimeLabel={translate(
+            'components.statusBar.processResourceMetricColumns.uptime',
+            'Uptime'
+          )}
+        />
       )}
 
       <div className="flex-1 overflow-y-auto scrollbar-sleek">

@@ -64,6 +64,9 @@ function workspacePortAsExternal(port: WorkspacePort & { kind: 'workspace' }): W
     pid: port.pid,
     processName: port.processName,
     protocol: port.protocol,
+    cpu: port.cpu,
+    memory: port.memory,
+    uptimeSeconds: port.uptimeSeconds,
     kind: 'external'
   }
 }

@@ -119,6 +119,7 @@ export function mergeSnapshotAndSessions(
         tabId,
         cpu: s.cpu,
         memory: s.memory,
+        uptimeSeconds: s.uptimeSeconds ?? null,
         hasLocalSamples: true,
         ...(row.readOnly ? { readOnly: true } : {})
       }
@@ -252,7 +253,8 @@ export function mergeSnapshotAndSessions(
       tabId,
       cpu: null,
       memory: null,
-      hasLocalSamples: false
+      hasLocalSamples: false,
+      uptimeSeconds: null
     })
   }
 

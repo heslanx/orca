@@ -1,7 +1,11 @@
+import {
+  loadUnixProcessResourceUsage,
+  loadWindowsProcessMetadata,
+  processResourceUsageFromPsFields
+} from './local-workspace-port-resources'
 import { readFile, readdir, readlink } from 'node:fs/promises'
 import { LSOF_NONBLOCKING_ARGS } from '../../shared/lsof-nonblocking-args'
 import { getProcessOutputFields } from '../../shared/process-output-field-scanner'
-import { readWindowsProcessTable } from '../windows/windows-process-table'
 import { runPortScanCommand } from './port-scan-command-client'
 import {
   partitionListenersNeedingMetadata,
@@ -134,12 +138,18 @@ async function scanDarwinLsofPorts(
   // Why: on a quiet machine the same servers keep listening, so the two metadata commands — the
   // expensive half of the scan — would re-derive answers the last scan already has.
   const { hydrated, pidsNeedingMetadata } = partitionListenersNeedingMetadata(ports, options)
+  // Attribution stays cached, but live resource metrics need a fresh sample.
+  const cachedPids = new Set(
+    hydrated.flatMap((port) => (port.pid && !pidsNeedingMetadata.has(port.pid) ? [port.pid] : []))
+  )
+  const resources = await loadUnixProcessResourceUsage(cachedPids)
+  const sampled = hydrated.map((port) => ({ ...port, ...resources.get(port.pid ?? -1) }))
   if (pidsNeedingMetadata.size === 0) {
-    return { ports: hydrated, metadataAvailable: true }
+    return { ports: sampled, metadataAvailable: true }
   }
   const metadata = await loadDarwinProcessMetadata(pidsNeedingMetadata)
   return {
-    ports: hydrated.map((port) => ({ ...metadata.get(port.pid ?? -1), ...port })),
+    ports: sampled.map((port) => ({ ...metadata.get(port.pid ?? -1), ...port })),
     metadataAvailable: true
   }
 }
@@ -168,13 +178,14 @@ async function scanLinuxProcPorts(): Promise<PlatformListeningPortScan> {
   ])
   const sockets = [...tcp4, ...tcp6]
   const inodeToPid = await mapLinuxInodesToPids(new Set(sockets.map((socket) => socket.inode)))
+  const resourceUsage = await loadUnixProcessResourceUsage(new Set(inodeToPid.values()))
   const metadata = new Map<number, ProcessMetadata>()
   const rawPorts: RawListeningPort[] = []
 
   for (const socket of sockets) {
     const pid = inodeToPid.get(socket.inode)
     if (pid != null && !metadata.has(pid)) {
-      metadata.set(pid, await loadLinuxProcessMetadata(pid))
+      metadata.set(pid, { ...(await loadLinuxProcessMetadata(pid)), ...resourceUsage.get(pid) })
     }
     rawPorts.push({
       host: socket.host,
@@ -274,6 +285,12 @@ async function loadDarwinProcessMetadata(pids: Set<number>): Promise<Map<number,
     '-o',
     'pid=',
     '-o',
+    'pcpu=',
+    '-o',
+    'rss=',
+    '-o',
+    'etime=',
+    '-o',
     'command='
   ]).catch(() => null)
 
@@ -288,40 +305,18 @@ async function loadDarwinProcessMetadata(pids: Set<number>): Promise<Map<number,
   }
 
   for (const line of commandOutput?.stdout.split('\n') ?? []) {
-    const match = line.match(/^\s*(\d+)\s+(.+)$/)
+    const match = line.match(/^\s*(\d+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(.+)$/)
     if (!match) {
       continue
     }
     const pid = Number.parseInt(match[1], 10)
-    result.set(pid, { ...result.get(pid), commandLine: match[2].trim() || undefined })
+    result.set(pid, {
+      ...result.get(pid),
+      ...processResourceUsageFromPsFields(match[2], match[3], match[4]),
+      commandLine: match[5].trim() || undefined
+    })
   }
 
-  return result
-}
-
-async function loadWindowsProcessMetadata(
-  pids: Set<number>
-): Promise<Map<number, ProcessMetadata>> {
-  const result = new Map<number, ProcessMetadata>()
-  if (pids.size === 0) {
-    return result
-  }
-  try {
-    // Why the native snapshot: attributing ports used to fork a powershell.exe
-    // per scan just to turn PIDs into names. That is a ~700ms cold start, a
-    // conhost window, and one more thing a Group Policy can block -- for data
-    // the panel treats as optional anyway.
-    for (const row of await readWindowsProcessTable()) {
-      if (pids.has(row.pid)) {
-        result.set(row.pid, {
-          processName: row.name,
-          commandLine: row.command || undefined
-        })
-      }
-    }
-  } catch {
-    // Process metadata is optional; port rows still render without attribution.
-  }
   return result
 }
 
