@@ -6,15 +6,19 @@ import { MobileNativeChatView } from './MobileNativeChatView'
 
 const scrollToEnd = vi.hoisted(() => vi.fn())
 const scrollToOffset = vi.hoisted(() => vi.fn())
+const platform = vi.hoisted(() => ({ OS: 'ios' }))
+const pageScroller = vi.hoisted(() => ({ scrollHeight: 0 }))
 
 vi.mock('react-native', async () => {
   const React = await import('react')
   return {
     ActivityIndicator: 'ActivityIndicator',
     FlatList: React.forwardRef((props, ref) => {
-      React.useImperativeHandle(ref, () => ({ scrollToEnd, scrollToOffset }), [])
+      const handle = { scrollToEnd, scrollToOffset, getScrollableNode: () => pageScroller }
+      React.useImperativeHandle(ref, () => handle, [])
       return React.createElement('FlatList', props)
     }),
+    Platform: platform,
     Pressable: 'Pressable',
     StyleSheet: { create: (styles: unknown) => styles, hairlineWidth: 1 },
     Text: 'Text',
@@ -97,6 +101,7 @@ type Overrides = {
   status?: Parameters<typeof MobileNativeChatView>[0]['status']
   error?: string
   readFailedFinally?: boolean
+  actionablePromptIds?: readonly string[]
 }
 
 function assistantTurn(id: string, text: string): NativeChatMessage {
@@ -136,8 +141,15 @@ describe('MobileNativeChatView', () => {
     renderer = null
     scrollToEnd.mockReset()
     scrollToOffset.mockReset()
+    pageScroller.scrollHeight = 0
     vi.unstubAllGlobals()
   })
+
+  async function advanceTimers(milliseconds: number): Promise<void> {
+    await act(async () => {
+      vi.advanceTimersByTime(milliseconds)
+    })
+  }
 
   async function render(overrides: Overrides = {}): Promise<void> {
     await act(async () => {
@@ -359,9 +371,7 @@ describe('MobileNativeChatView', () => {
 
       expect(scrollToOffset).toHaveBeenCalledOnce()
       expect(scrollToOffset).toHaveBeenLastCalledWith({ animated: false, offset: 900 })
-      await act(async () => {
-        vi.advanceTimersByTime(60)
-      })
+      await advanceTimers(60)
       expect(scrollToOffset).toHaveBeenCalledOnce()
     } finally {
       vi.useRealTimers()
@@ -444,9 +454,7 @@ describe('MobileNativeChatView', () => {
         list().props.onContentSizeChange(320, 1_250)
         list().props.onMomentumScrollBegin?.({})
       })
-      await act(async () => {
-        vi.advanceTimersByTime(200)
-      })
+      await advanceTimers(200)
       act(() => list().props.onContentSizeChange(320, 1_300))
 
       expect(scrollToEnd).not.toHaveBeenCalled()
@@ -532,9 +540,7 @@ describe('MobileNativeChatView', () => {
           }
         })
       })
-      await act(async () => {
-        vi.advanceTimersByTime(200)
-      })
+      await advanceTimers(200)
       act(() => list().props.onContentSizeChange(320, 1_250))
 
       expect(scrollToEnd).toHaveBeenCalledOnce()
@@ -593,45 +599,151 @@ describe('MobileNativeChatView', () => {
     expect(scrollToOffset).toHaveBeenLastCalledWith({ animated: false, offset: 1_200 })
   })
 
-  it('keeps a history load detached after its triggering drag settles', async () => {
+  it('resumes following when the drag that paged in history ends at the tail', async () => {
     vi.useFakeTimers()
     try {
+      // A chat shorter than the screen: its top and its tail are the same place.
+      const shortChat = {
+        contentOffset: { y: 0 },
+        contentSize: { height: 400 },
+        layoutMeasurement: { height: 500 }
+      }
       const folded = [assistantTurn('a1', 'Short history')]
       const onLoadEarlier = vi.fn()
       await render({ folded, hasMore: true, onLoadEarlier })
-      scrollToEnd.mockClear()
 
       act(() => {
         list().props.onScrollBeginDrag?.({})
-        list().props.onScroll({
-          nativeEvent: {
-            contentOffset: { y: 0 },
-            contentSize: { height: 400 },
-            layoutMeasurement: { height: 500 }
-          }
-        })
-        list().props.onScrollEndDrag?.({
-          nativeEvent: {
-            contentOffset: { y: 0 },
-            contentSize: { height: 400 },
-            layoutMeasurement: { height: 500 }
-          }
-        })
+        list().props.onScroll({ nativeEvent: shortChat })
+        list().props.onScrollEndDrag?.({ nativeEvent: shortChat })
       })
-      await act(async () => {
-        vi.advanceTimersByTime(200)
-      })
+      await advanceTimers(200)
       act(() => list().props.onContentSizeChange(320, 950))
 
       expect(onLoadEarlier).toHaveBeenCalledOnce()
-      expect(scrollToEnd).not.toHaveBeenCalled()
+      expect(scrollToOffset).toHaveBeenLastCalledWith({ animated: false, offset: 950 })
+      expect(
+        renderer!.root.findAll((node) => node.props.accessibilityLabel === 'Scroll to latest')
+      ).toHaveLength(0)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('pages in history only from a scroll the reader made', async () => {
+    const onLoadEarlier = vi.fn()
+    await render({ folded: [assistantTurn('a1', 'Latest')], hasMore: true, onLoadEarlier })
+    const nearTop = {
+      nativeEvent: {
+        contentOffset: { y: 40 },
+        contentSize: { height: 520 },
+        layoutMeasurement: { height: 500 }
+      }
+    }
+
+    // The tail pin of a chat barely taller than the screen reports an offset near the top too.
+    act(() => list().props.onScroll(nearTop))
+    expect(onLoadEarlier).not.toHaveBeenCalled()
+
+    act(() => {
+      list().props.onScrollBeginDrag?.({})
+      list().props.onScroll(nearTop)
+    })
+    expect(onLoadEarlier).toHaveBeenCalledOnce()
+  })
+
+  it('anchors the first visible row, which the header above it is not', async () => {
+    const folded = [assistantTurn('a1', 'History')]
+    await render({ folded, hasMore: true })
+    expect(list().props.maintainVisibleContentPosition).toEqual({ minIndexForVisible: 1 })
+
+    await update({ folded, hasMore: false })
+    expect(list().props.maintainVisibleContentPosition).toEqual({ minIndexForVisible: 0 })
+  })
+
+  describe('on the page, where the list reports no drag or momentum', () => {
+    beforeEach(() => {
+      platform.OS = 'web'
+    })
+
+    afterEach(() => {
+      platform.OS = 'ios'
+    })
+
+    function scrolledTo(y: number, contentHeight: number) {
+      return {
+        nativeEvent: {
+          contentOffset: { y },
+          contentSize: { height: contentHeight },
+          layoutMeasurement: { height: 500 }
+        }
+      }
+    }
+
+    it('stops following when the reader scrolls up, and resumes at the end', async () => {
+      await render({ folded: [assistantTurn('a1', 'Latest')] })
+      act(() => {
+        list().props.onContentSizeChange(320, 1_000)
+        list().props.onScroll(scrolledTo(500, 1_000))
+      })
+      scrollToOffset.mockClear()
+
+      // No drag event arrives on the page: the move up is all there is to go on.
+      act(() => {
+        list().props.onScroll(scrolledTo(300, 1_000))
+        list().props.onContentSizeChange(320, 1_200)
+      })
       expect(scrollToOffset).not.toHaveBeenCalled()
       expect(
         renderer!.root.findAll((node) => node.props.accessibilityLabel === 'Scroll to latest')
       ).toHaveLength(1)
-    } finally {
-      vi.useRealTimers()
-    }
+
+      act(() => {
+        list().props.onScroll(scrolledTo(700, 1_200))
+        list().props.onContentSizeChange(320, 1_400)
+      })
+      expect(scrollToOffset).toHaveBeenLastCalledWith({ animated: false, offset: 1_400 })
+    })
+
+    it('does not take its own pin, landing short of a grown end, for the reader', async () => {
+      await render({ folded: [assistantTurn('a1', 'Latest')] })
+      act(() => {
+        list().props.onContentSizeChange(320, 1_000)
+        list().props.onScroll(scrolledTo(500, 1_000))
+      })
+      scrollToOffset.mockClear()
+
+      // The pin reached the end it was sent to; the reply had grown 400 past it by then.
+      act(() => {
+        list().props.onScroll(scrolledTo(700, 1_600))
+        list().props.onContentSizeChange(320, 1_600)
+      })
+
+      expect(scrollToOffset).toHaveBeenLastCalledWith({ animated: false, offset: 1_600 })
+    })
+
+    it("opens another chat at its measured end, not the last chat's", async () => {
+      await render({ folded: [assistantTurn('a1', 'Chat A')] })
+      act(() => list().props.onContentSizeChange(320, 1_000))
+      pageScroller.scrollHeight = 2_500
+      scrollToEnd.mockClear()
+
+      await update({ folded: [assistantTurn('b1', 'Chat B')], sendSurfaceId: 'tab-b' })
+
+      expect(scrollToEnd).not.toHaveBeenCalled()
+      expect(scrollToOffset).toHaveBeenLastCalledWith({ animated: false, offset: 2_500 })
+    })
+
+    it('pages in history when the reader scrolls up to the top, not when a pin passes it', async () => {
+      const onLoadEarlier = vi.fn()
+      await render({ folded: [assistantTurn('a1', 'Latest')], hasMore: true, onLoadEarlier })
+
+      act(() => list().props.onScroll(scrolledTo(40, 540)))
+      expect(onLoadEarlier).not.toHaveBeenCalled()
+
+      act(() => list().props.onScroll(scrolledTo(10, 540)))
+      expect(onLoadEarlier).toHaveBeenCalledOnce()
+    })
   })
 
   it('routes an accepted send through the immediate nonanimated tail owner', async () => {
@@ -649,9 +761,7 @@ describe('MobileNativeChatView', () => {
 
       expect(scrollToEnd).toHaveBeenCalledOnce()
       expect(scrollToEnd).toHaveBeenLastCalledWith({ animated: false })
-      await act(async () => {
-        vi.advanceTimersByTime(60)
-      })
+      await advanceTimers(60)
       expect(scrollToEnd).toHaveBeenCalledOnce()
     } finally {
       vi.useRealTimers()
@@ -675,6 +785,26 @@ describe('MobileNativeChatView', () => {
     expect(scrollToOffset).toHaveBeenLastCalledWith({ animated: false, offset: 1_300 })
   })
 
+  // The view stays mounted across chat tabs, so the reader's place in one must not carry over.
+  it('opens another chat at its newest message, following, keeping the Tools toggle', async () => {
+    await render({ folded: [assistantTurn('a1', 'Chat A')] })
+    await scrollAwayFromTail()
+    const label = (text: string) => renderer!.root.findAllByProps({ children: text })
+    const jumpControls = () =>
+      renderer!.root.findAllByProps({ accessibilityLabel: 'Scroll to latest' })
+    act(() => label('Tools')[0].parent!.props.onPress())
+    expect(jumpControls()).toHaveLength(1)
+    scrollToEnd.mockClear()
+
+    await update({ folded: [assistantTurn('b1', 'Chat B')], sendSurfaceId: 'tab-b' })
+
+    expect(scrollToEnd).toHaveBeenCalledWith({ animated: false })
+    expect(jumpControls()).toHaveLength(0)
+    act(() => list().props.onContentSizeChange(320, 900))
+    expect(scrollToOffset).toHaveBeenLastCalledWith({ animated: false, offset: 900 })
+    expect(label('Collapse')).toHaveLength(1)
+  })
+
   it('repins after a keyboard-driven viewport layout only while following', async () => {
     vi.useFakeTimers()
     try {
@@ -690,9 +820,7 @@ describe('MobileNativeChatView', () => {
 
       expect(scrollToEnd).toHaveBeenCalledOnce()
       expect(scrollToEnd).toHaveBeenLastCalledWith({ animated: false })
-      await act(async () => {
-        vi.advanceTimersByTime(60)
-      })
+      await advanceTimers(60)
       expect(scrollToEnd).toHaveBeenCalledOnce()
 
       await scrollAwayFromTail()
@@ -703,6 +831,13 @@ describe('MobileNativeChatView', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  it('tells a row whether the host still waits on the prompt it stands for', async () => {
+    const rows = [assistantTurn('asked', 'Tea or coffee?'), assistantTurn('open', 'Which branch?')]
+    await render({ messages: rows, folded: rows, actionablePromptIds: ['open'] })
+    expect(renderedRow('asked').props.awaiting).toBe(false)
+    expect(renderedRow('open').props.awaiting).toBe(true)
   })
 
   it('renders an accepted optimistic image send without a queued state', async () => {
@@ -718,20 +853,14 @@ describe('MobileNativeChatView', () => {
     vi.useFakeTimers()
     try {
       await render({ inputLockReason: 'waiting' })
-      await act(async () => {
-        vi.advanceTimersByTime(600)
-      })
+      await advanceTimers(600)
       expect(composer().props.disabled).toBe(true)
 
       await update({ inputLockReason: null })
       expect(composer().props.disabled).toBe(true)
-      await act(async () => {
-        vi.advanceTimersByTime(300)
-      })
+      await advanceTimers(300)
       await update({ inputLockReason: 'waiting' })
-      await act(async () => {
-        vi.advanceTimersByTime(600)
-      })
+      await advanceTimers(600)
 
       expect(composer().props.disabled).toBe(true)
       expect(composer().props.placeholder).toBe('Waiting for terminal…')
@@ -744,18 +873,12 @@ describe('MobileNativeChatView', () => {
     vi.useFakeTimers()
     try {
       await render({ inputLockReason: 'waiting' })
-      await act(async () => {
-        vi.advanceTimersByTime(600)
-      })
+      await advanceTimers(600)
       await update({ inputLockReason: null })
-      await act(async () => {
-        vi.advanceTimersByTime(599)
-      })
+      await advanceTimers(599)
       expect(composer().props.disabled).toBe(true)
 
-      await act(async () => {
-        vi.advanceTimersByTime(1)
-      })
+      await advanceTimers(1)
 
       expect(composer().props.disabled).toBe(false)
       expect(composer().props.placeholder).toBe('Message, @files, /commands')
