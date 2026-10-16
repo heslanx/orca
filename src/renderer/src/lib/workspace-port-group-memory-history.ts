@@ -41,19 +41,24 @@ function sweepStale(now: number): void {
 
 /** Sum of memory across ports; `null` when no port has a sample. Dedupes by pid —
  *  a process bound to multiple ports reports the same process-level memory on each row. */
-function sumMemory(ports: readonly { pid?: number; memory?: number }[]): number | null {
+function sumMemory(
+  ports: readonly { id?: string; pid?: number; memory?: number }[]
+): number | null {
   let sum = 0
   let hasValue = false
-  const seenPids = new Set<number>()
+  const seenProcesses = new Set<string>()
   for (const port of ports) {
     if (port.memory == null) {
       continue
     }
     if (port.pid != null) {
-      if (seenPids.has(port.pid)) {
+      // Aggregate scans namespace row IDs by host. A PID is unique only within that host.
+      const hostPrefix = port.id?.match(/^(local:all:|environment:.+?:all:)/)?.[0] ?? ''
+      const processKey = `${hostPrefix}${port.pid}`
+      if (seenProcesses.has(processKey)) {
         continue
       }
-      seenPids.add(port.pid)
+      seenProcesses.add(processKey)
     }
     sum += port.memory
     hasValue = true
@@ -64,7 +69,7 @@ function sumMemory(ports: readonly { pid?: number; memory?: number }[]): number 
 /** Records one sample per workspace group plus one for the external-ports bucket. */
 export function recordWorkspacePortMemorySamples(
   groups: readonly WorkspacePortGroup[],
-  externalPorts: readonly { pid?: number; memory?: number }[]
+  externalPorts: readonly { id?: string; pid?: number; memory?: number }[]
 ): void {
   const now = Date.now()
   // Why: sweep before pushing — otherwise a group untouched for 10+ minutes

@@ -84,6 +84,19 @@ describe('workspace port group memory history', () => {
     expect(readWorkspacePortMemoryHistory('wt-1')).toEqual([1000])
   })
 
+  it('keeps equal pids on different execution hosts separate', () => {
+    recordWorkspacePortMemorySamples(
+      [],
+      [
+        { id: 'local:all:tcp:3000', pid: 42, memory: 1000 },
+        { id: 'local:all:tcp:3001', pid: 42, memory: 1000 },
+        { id: 'environment:remote:all:tcp:3000', pid: 42, memory: 2000 }
+      ]
+    )
+
+    expect(readWorkspacePortMemoryHistory(EXTERNAL_PORTS_HISTORY_KEY)).toEqual([3000])
+  })
+
   it('does not record a false zero sample when every port lacks a memory value', () => {
     // Regression: a failed metadata probe leaves every port's memory
     // undefined; summing that to 0 and recording it looks like a real drop.
